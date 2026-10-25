@@ -51,7 +51,10 @@ public class Main {
             lines.add("</tokens>");
             Files.write(tokensOut, lines);
             System.out.println("Tokenized " + f + " -> " + tokensOut + " (" + tokens.size() + " tokens)");
-            // TODO: new CompilationEngine(tokens, out).compileClass();  // will write 'out'
+            CompilationEngine engine = new CompilationEngine(tokens);
+            engine.compileClass();
+            Files.write(out, engine.getOutput());
+            System.out.println("Parsed    " + f + " -> " + out);
         }
     }
 }
