@@ -42,8 +42,8 @@ public class Main {
             files = List.of(input);
         }
         for (Path f : files) {
-            Path out = Path.of(f.toString().replaceAll("\\.jack$", ".xml"));
-            System.out.println("Would parse " + f + " -> " + out);
+            Path out = Path.of(f.toString().replaceAll("\\.jack$", ".txt"));
+            System.out.println("Would parse " + f + " -> " + out)
             // TODO: new CompilationEngine(new Tokenizer(f), out).compileClass();
         }
     }
