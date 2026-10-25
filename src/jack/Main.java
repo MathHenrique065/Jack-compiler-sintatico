@@ -43,8 +43,15 @@ public class Main {
         }
         for (Path f : files) {
             Path out = Path.of(f.toString().replaceAll("\\.jack$", ".xml"));
-            System.out.println("Would parse " + f + " -> " + out);
-            // TODO: new CompilationEngine(new Tokenizer(f), out).compileClass();
+            Path tokensOut = Path.of(f.toString().replaceAll("\\.jack$", "T.xml"));
+            List<Token> tokens = Tokenizer.fromFile(f).tokenize();
+            List<String> lines = new java.util.ArrayList<>();
+            lines.add("<tokens>");
+            tokens.forEach(t -> lines.add(t.toXml()));
+            lines.add("</tokens>");
+            Files.write(tokensOut, lines);
+            System.out.println("Tokenized " + f + " -> " + tokensOut + " (" + tokens.size() + " tokens)");
+            // TODO: new CompilationEngine(tokens, out).compileClass();  // will write 'out'
         }
     }
 }
