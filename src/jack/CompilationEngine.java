@@ -278,6 +278,66 @@ public class CompilationEngine {
         close("returnStatement");
     }
 
+    // ---- subroutines ----
+
+    /** parameterList: ((type varName) (',' type varName)*)? */
+    public void compileParameterList() {
+        open("parameterList");
+        if (!isSymbol(")")) {
+            eatType();
+            eatIdentifier();
+            while (isSymbol(",")) {
+                advance();
+                eatType();
+                eatIdentifier();
+            }
+        }
+        close("parameterList");
+    }
+
+    /** var type varName (',' varName)* ';' */
+    public void compileVarDec() {
+        open("varDec");
+        eatKeyword("var");
+        eatType();
+        eatIdentifier();
+        while (isSymbol(",")) {
+            advance();
+            eatIdentifier();
+        }
+        eatSymbol(";");
+        close("varDec");
+    }
+
+    /** subroutineBody: '{' varDec* statements '}' */
+    public void compileSubroutineBody() {
+        open("subroutineBody");
+        eatSymbol("{");
+        while (isKeyword("var")) {
+            compileVarDec();
+        }
+        compileStatements();
+        eatSymbol("}");
+        close("subroutineBody");
+    }
+
+    /** (constructor | function | method) (void | type) subroutineName '(' parameterList ')' subroutineBody */
+    public void compileSubroutineDec() {
+        open("subroutineDec");
+        eatKeyword("constructor", "function", "method");
+        if (isKeyword("void")) {
+            advance();
+        } else {
+            eatType();
+        }
+        eatIdentifier();
+        eatSymbol("(");
+        compileParameterList();
+        eatSymbol(")");
+        compileSubroutineBody();
+        close("subroutineDec");
+    }
+
     private IllegalStateException error(String expected) {
         Token t = peek();
         return new IllegalStateException("Syntax error: expected " + expected + " but found "
