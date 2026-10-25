@@ -104,6 +104,88 @@ public class CompilationEngine {
         out.add("  ".repeat(indent) + line);
     }
 
+    // ---- expressions ----
+
+    private static final String OPS = "+-*/&|<>=";
+
+    /** expression: term (op term)* */
+    public void compileExpression() {
+        open("expression");
+        compileTerm();
+        while (isOp()) {
+            advance();
+            compileTerm();
+        }
+        close("expression");
+    }
+
+    private boolean isOp() {
+        Token t = peek();
+        return t != null && t.type() == TokenType.SYMBOL && OPS.contains(t.value());
+    }
+
+    /** term: constant | varName | varName[expr] | subroutineCall | (expr) | unaryOp term */
+    public void compileTerm() {
+        Token t = peek();
+        if (t == null) {
+            throw error("a term");
+        }
+        open("term");
+        switch (t.type()) {
+            case INTEGER_CONSTANT, STRING_CONSTANT -> advance();
+            case KEYWORD -> {
+                if (!isKeyword("true", "false", "null", "this")) {
+                    throw error("a keyword constant (true, false, null, this)");
+                }
+                advance();
+            }
+            case IDENTIFIER -> {
+                advance();
+                if (isSymbol("[")) {
+                    advance();
+                    compileExpression();
+                    eatSymbol("]");
+                } else if (isSymbol("(")) {
+                    advance();
+                    compileExpressionList();
+                    eatSymbol(")");
+                } else if (isSymbol(".")) {
+                    advance();
+                    eatIdentifier();
+                    eatSymbol("(");
+                    compileExpressionList();
+                    eatSymbol(")");
+                }
+            }
+            case SYMBOL -> {
+                if (isSymbol("(")) {
+                    advance();
+                    compileExpression();
+                    eatSymbol(")");
+                } else if (isSymbol("-") || isSymbol("~")) {
+                    advance();
+                    compileTerm();
+                } else {
+                    throw error("a term");
+                }
+            }
+        }
+        close("term");
+    }
+
+    /** expressionList: (expression (',' expression)*)? */
+    public void compileExpressionList() {
+        open("expressionList");
+        if (!isSymbol(")")) {
+            compileExpression();
+            while (isSymbol(",")) {
+                advance();
+                compileExpression();
+            }
+        }
+        close("expressionList");
+    }
+
     private IllegalStateException error(String expected) {
         Token t = peek();
         return new IllegalStateException("Syntax error: expected " + expected + " but found "
