@@ -338,6 +338,38 @@ public class CompilationEngine {
         close("subroutineDec");
     }
 
+    // ---- class ----
+
+    /** (static | field) type varName (',' varName)* ';' */
+    public void compileClassVarDec() {
+        open("classVarDec");
+        eatKeyword("static", "field");
+        eatType();
+        eatIdentifier();
+        while (isSymbol(",")) {
+            advance();
+            eatIdentifier();
+        }
+        eatSymbol(";");
+        close("classVarDec");
+    }
+
+    /** class className '{' classVarDec* subroutineDec* '}'  -- entry point of the parser. */
+    public void compileClass() {
+        open("class");
+        eatKeyword("class");
+        eatIdentifier();
+        eatSymbol("{");
+        while (isKeyword("static", "field")) {
+            compileClassVarDec();
+        }
+        while (isKeyword("constructor", "function", "method")) {
+            compileSubroutineDec();
+        }
+        eatSymbol("}");
+        close("class");
+    }
+
     private IllegalStateException error(String expected) {
         Token t = peek();
         return new IllegalStateException("Syntax error: expected " + expected + " but found "
