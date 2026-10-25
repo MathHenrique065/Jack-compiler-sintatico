@@ -17,5 +17,6 @@ Syntax analyzer (tokenizer + parser → XML) for the Jack language (nand2tetris,
 - Compare output with the nand2tetris `TextComparer` tool.
 
 ## Plan
-1. Tokenizer → `XxxT.xml` (token stream)
-2. CompilationEngine → `Xxx.xml` (parse tree)
+- [x] Tokenizer → `XxxT.xml` (token stream)
+- [ ] CompilationEngine → `Xxx.xml` (parse tree)
+- [ ] Validate against the official nand2tetris expected XML files
