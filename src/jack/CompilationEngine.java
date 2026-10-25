@@ -186,6 +186,98 @@ public class CompilationEngine {
         close("expressionList");
     }
 
+    // ---- statements ----
+
+    /** statements: statement* */
+    public void compileStatements() {
+        open("statements");
+        while (isKeyword("let", "if", "while", "do", "return")) {
+            switch (peek().value()) {
+                case "let" -> compileLet();
+                case "if" -> compileIf();
+                case "while" -> compileWhile();
+                case "do" -> compileDo();
+                default -> compileReturn();
+            }
+        }
+        close("statements");
+    }
+
+    /** let varName ('[' expression ']')? '=' expression ';' */
+    public void compileLet() {
+        open("letStatement");
+        eatKeyword("let");
+        eatIdentifier();
+        if (isSymbol("[")) {
+            advance();
+            compileExpression();
+            eatSymbol("]");
+        }
+        eatSymbol("=");
+        compileExpression();
+        eatSymbol(";");
+        close("letStatement");
+    }
+
+    /** if '(' expression ')' '{' statements '}' (else '{' statements '}')? */
+    public void compileIf() {
+        open("ifStatement");
+        eatKeyword("if");
+        eatSymbol("(");
+        compileExpression();
+        eatSymbol(")");
+        eatSymbol("{");
+        compileStatements();
+        eatSymbol("}");
+        if (isKeyword("else")) {
+            advance();
+            eatSymbol("{");
+            compileStatements();
+            eatSymbol("}");
+        }
+        close("ifStatement");
+    }
+
+    /** while '(' expression ')' '{' statements '}' */
+    public void compileWhile() {
+        open("whileStatement");
+        eatKeyword("while");
+        eatSymbol("(");
+        compileExpression();
+        eatSymbol(")");
+        eatSymbol("{");
+        compileStatements();
+        eatSymbol("}");
+        close("whileStatement");
+    }
+
+    /** do subroutineCall ';' */
+    public void compileDo() {
+        open("doStatement");
+        eatKeyword("do");
+        eatIdentifier();
+        if (isSymbol(".")) {
+            advance();
+            eatIdentifier();
+        }
+        eatSymbol("(");
+        compileExpressionList();
+        eatSymbol(")");
+        eatSymbol(";");
+        close("doStatement");
+    }
+
+    /** return expression? ';' */
+    public void compileReturn() {
+        open("returnStatement");
+        eatKeyword("return");
+        if (!isSymbol(";")) {
+            compileExpression();
+        }
+        eatSymbol(";");
+        close("returnStatement");
+    }
+
     private IllegalStateException error(String expected) {
         Token t = peek();
         return new IllegalStateException("Syntax error: expected " + expected + " but found "
