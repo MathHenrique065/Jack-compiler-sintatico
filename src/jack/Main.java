@@ -53,9 +53,9 @@ public class Main {
                 lines.add("</tokens>");
                 Files.write(tokensOut, lines);
                 System.out.println("Tokenized " + f + " -> " + tokensOut + " (" + tokens.size() + " tokens)");
-                CompilationEngine engine = new CompilationEngine(tokens);
-                engine.compileClass();
-                Files.write(out, engine.getOutput());
+                Parser parser = new Parser(tokens);
+                parser.parse();
+                Files.write(out, parser.getOutput());
                 System.out.println("Parsed    " + f + " -> " + out);
             } catch (IllegalStateException e) {
                 System.err.println(f + ": " + e.getMessage());

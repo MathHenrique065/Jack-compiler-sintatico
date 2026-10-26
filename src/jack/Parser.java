@@ -7,19 +7,34 @@ import java.util.List;
  * Recursive-descent parser for Jack. Consumes the token list and produces the
  * nand2tetris-style parse tree as indented XML lines.
  */
-public class CompilationEngine {
+public class Parser {
     private final List<Token> tokens;
     private final List<String> out = new ArrayList<>();
     private int pos = 0;
     private int indent = 0;
 
-    public CompilationEngine(List<Token> tokens) {
+    public Parser(List<Token> tokens) {
         this.tokens = tokens;
+    }
+
+    /** Convenience constructor: scans the source text and prepares the parser. */
+    public Parser(String source) {
+        this(new Tokenizer(source).tokenize());
+    }
+
+    /** Entry point: parses a whole class (the start symbol of the Jack grammar). */
+    public void parse() {
+        parseClass();
     }
 
     /** The XML lines produced so far. */
     public List<String> getOutput() {
         return out;
+    }
+
+    /** The parse tree as a single XML string. */
+    public String XMLOutput() {
+        return String.join("\n", out) + "\n";
     }
 
     // ---- token cursor helpers ----
@@ -109,12 +124,12 @@ public class CompilationEngine {
     private static final String OPS = "+-*/&|<>=";
 
     /** expression: term (op term)* */
-    public void compileExpression() {
+    public void parseExpression() {
         open("expression");
-        compileTerm();
+        parseTerm();
         while (isOp()) {
             advance();
-            compileTerm();
+            parseTerm();
         }
         close("expression");
     }
@@ -125,7 +140,7 @@ public class CompilationEngine {
     }
 
     /** term: constant | varName | varName[expr] | subroutineCall | (expr) | unaryOp term */
-    public void compileTerm() {
+    public void parseTerm() {
         Token t = peek();
         if (t == null) {
             throw error("a term");
@@ -143,28 +158,28 @@ public class CompilationEngine {
                 advance();
                 if (isSymbol("[")) {
                     advance();
-                    compileExpression();
+                    parseExpression();
                     eatSymbol("]");
                 } else if (isSymbol("(")) {
                     advance();
-                    compileExpressionList();
+                    parseExpressionList();
                     eatSymbol(")");
                 } else if (isSymbol(".")) {
                     advance();
                     eatIdentifier();
                     eatSymbol("(");
-                    compileExpressionList();
+                    parseExpressionList();
                     eatSymbol(")");
                 }
             }
             case SYMBOL -> {
                 if (isSymbol("(")) {
                     advance();
-                    compileExpression();
+                    parseExpression();
                     eatSymbol(")");
                 } else if (isSymbol("-") || isSymbol("~")) {
                     advance();
-                    compileTerm();
+                    parseTerm();
                 } else {
                     throw error("a term");
                 }
@@ -174,13 +189,13 @@ public class CompilationEngine {
     }
 
     /** expressionList: (expression (',' expression)*)? */
-    public void compileExpressionList() {
+    public void parseExpressionList() {
         open("expressionList");
         if (!isSymbol(")")) {
-            compileExpression();
+            parseExpression();
             while (isSymbol(",")) {
                 advance();
-                compileExpression();
+                parseExpression();
             }
         }
         close("expressionList");
@@ -189,70 +204,70 @@ public class CompilationEngine {
     // ---- statements ----
 
     /** statements: statement* */
-    public void compileStatements() {
+    public void parseStatements() {
         open("statements");
         while (isKeyword("let", "if", "while", "do", "return")) {
             switch (peek().value()) {
-                case "let" -> compileLet();
-                case "if" -> compileIf();
-                case "while" -> compileWhile();
-                case "do" -> compileDo();
-                default -> compileReturn();
+                case "let" -> parseLet();
+                case "if" -> parseIf();
+                case "while" -> parseWhile();
+                case "do" -> parseDo();
+                default -> parseReturn();
             }
         }
         close("statements");
     }
 
     /** let varName ('[' expression ']')? '=' expression ';' */
-    public void compileLet() {
+    public void parseLet() {
         open("letStatement");
         eatKeyword("let");
         eatIdentifier();
         if (isSymbol("[")) {
             advance();
-            compileExpression();
+            parseExpression();
             eatSymbol("]");
         }
         eatSymbol("=");
-        compileExpression();
+        parseExpression();
         eatSymbol(";");
         close("letStatement");
     }
 
     /** if '(' expression ')' '{' statements '}' (else '{' statements '}')? */
-    public void compileIf() {
+    public void parseIf() {
         open("ifStatement");
         eatKeyword("if");
         eatSymbol("(");
-        compileExpression();
+        parseExpression();
         eatSymbol(")");
         eatSymbol("{");
-        compileStatements();
+        parseStatements();
         eatSymbol("}");
         if (isKeyword("else")) {
             advance();
             eatSymbol("{");
-            compileStatements();
+            parseStatements();
             eatSymbol("}");
         }
         close("ifStatement");
     }
 
     /** while '(' expression ')' '{' statements '}' */
-    public void compileWhile() {
+    public void parseWhile() {
         open("whileStatement");
         eatKeyword("while");
         eatSymbol("(");
-        compileExpression();
+        parseExpression();
         eatSymbol(")");
         eatSymbol("{");
-        compileStatements();
+        parseStatements();
         eatSymbol("}");
         close("whileStatement");
     }
 
     /** do subroutineCall ';' */
-    public void compileDo() {
+    public void parseDo() {
         open("doStatement");
         eatKeyword("do");
         eatIdentifier();
@@ -261,18 +276,18 @@ public class CompilationEngine {
             eatIdentifier();
         }
         eatSymbol("(");
-        compileExpressionList();
+        parseExpressionList();
         eatSymbol(")");
         eatSymbol(";");
         close("doStatement");
     }
 
     /** return expression? ';' */
-    public void compileReturn() {
+    public void parseReturn() {
         open("returnStatement");
         eatKeyword("return");
         if (!isSymbol(";")) {
-            compileExpression();
+            parseExpression();
         }
         eatSymbol(";");
         close("returnStatement");
@@ -281,7 +296,7 @@ public class CompilationEngine {
     // ---- subroutines ----
 
     /** parameterList: ((type varName) (',' type varName)*)? */
-    public void compileParameterList() {
+    public void parseParameterList() {
         open("parameterList");
         if (!isSymbol(")")) {
             eatType();
@@ -296,7 +311,7 @@ public class CompilationEngine {
     }
 
     /** var type varName (',' varName)* ';' */
-    public void compileVarDec() {
+    public void parseVarDec() {
         open("varDec");
         eatKeyword("var");
         eatType();
@@ -310,19 +325,19 @@ public class CompilationEngine {
     }
 
     /** subroutineBody: '{' varDec* statements '}' */
-    public void compileSubroutineBody() {
+    public void parseSubroutineBody() {
         open("subroutineBody");
         eatSymbol("{");
         while (isKeyword("var")) {
-            compileVarDec();
+            parseVarDec();
         }
-        compileStatements();
+        parseStatements();
         eatSymbol("}");
         close("subroutineBody");
     }
 
     /** (constructor | function | method) (void | type) subroutineName '(' parameterList ')' subroutineBody */
-    public void compileSubroutineDec() {
+    public void parseSubroutineDec() {
         open("subroutineDec");
         eatKeyword("constructor", "function", "method");
         if (isKeyword("void")) {
@@ -332,16 +347,16 @@ public class CompilationEngine {
         }
         eatIdentifier();
         eatSymbol("(");
-        compileParameterList();
+        parseParameterList();
         eatSymbol(")");
-        compileSubroutineBody();
+        parseSubroutineBody();
         close("subroutineDec");
     }
 
     // ---- class ----
 
     /** (static | field) type varName (',' varName)* ';' */
-    public void compileClassVarDec() {
+    public void parseClassVarDec() {
         open("classVarDec");
         eatKeyword("static", "field");
         eatType();
@@ -355,16 +370,16 @@ public class CompilationEngine {
     }
 
     /** class className '{' classVarDec* subroutineDec* '}'  -- entry point of the parser. */
-    public void compileClass() {
+    public void parseClass() {
         open("class");
         eatKeyword("class");
         eatIdentifier();
         eatSymbol("{");
         while (isKeyword("static", "field")) {
-            compileClassVarDec();
+            parseClassVarDec();
         }
         while (isKeyword("constructor", "function", "method")) {
-            compileSubroutineDec();
+            parseSubroutineDec();
         }
         eatSymbol("}");
         close("class");
