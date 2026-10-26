@@ -41,20 +41,29 @@ public class Main {
         } else {
             files = List.of(input);
         }
+        boolean failed = false;
         for (Path f : files) {
             Path out = Path.of(f.toString().replaceAll("\\.jack$", ".xml"));
             Path tokensOut = Path.of(f.toString().replaceAll("\\.jack$", "T.xml"));
-            List<Token> tokens = Tokenizer.fromFile(f).tokenize();
-            List<String> lines = new java.util.ArrayList<>();
-            lines.add("<tokens>");
-            tokens.forEach(t -> lines.add(t.toXml()));
-            lines.add("</tokens>");
-            Files.write(tokensOut, lines);
-            System.out.println("Tokenized " + f + " -> " + tokensOut + " (" + tokens.size() + " tokens)");
-            CompilationEngine engine = new CompilationEngine(tokens);
-            engine.compileClass();
-            Files.write(out, engine.getOutput());
-            System.out.println("Parsed    " + f + " -> " + out);
+            try {
+                List<Token> tokens = Tokenizer.fromFile(f).tokenize();
+                List<String> lines = new java.util.ArrayList<>();
+                lines.add("<tokens>");
+                tokens.forEach(t -> lines.add(t.toXml()));
+                lines.add("</tokens>");
+                Files.write(tokensOut, lines);
+                System.out.println("Tokenized " + f + " -> " + tokensOut + " (" + tokens.size() + " tokens)");
+                CompilationEngine engine = new CompilationEngine(tokens);
+                engine.compileClass();
+                Files.write(out, engine.getOutput());
+                System.out.println("Parsed    " + f + " -> " + out);
+            } catch (IllegalStateException e) {
+                System.err.println(f + ": " + e.getMessage());
+                failed = true;
+            }
+        }
+        if (failed) {
+            System.exit(1);
         }
     }
 }
