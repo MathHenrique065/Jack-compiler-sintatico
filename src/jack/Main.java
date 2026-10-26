@@ -7,9 +7,10 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * Entry point: java -cp out jack.Main <File.jack | directory>
- * Each .jack file will produce a File.xml (syntax tree) next to it.
- * TODO: plug in your Tokenizer and CompilationEngine here.
+ * Entry point: java -cp out jack.Main <File.jack | directory> [output.xml | output directory]
+ * Each .jack file produces a File.xml (syntax tree) and a FileT.xml (tokens). By default they are
+ * written next to the source; with a second argument they go to that file (single input) or
+ * directory (directory input).
  *
  * <p>Options:
  * <ul>
@@ -19,8 +20,30 @@ import java.util.stream.Stream;
 public class Main {
     private static void printHelp() {
         System.out.println("Jack Syntax Analyzer");
-        System.out.println("Usage: java -cp out jack.Main <File.jack | directory>");
+        System.out.println("Usage: java -cp out jack.Main <File.jack | directory> [output.xml | output directory]");
         System.out.println("  -h, --help   Show this message");
+    }
+
+    /** Where the parse tree of {@code jackFile} goes (null target = next to the source file). */
+    private static Path outputFor(Path jackFile, Path input, Path target) throws IOException {
+        String name = jackFile.getFileName().toString().replaceAll("\\.jack$", ".xml");
+        if (target == null) {
+            return jackFile.resolveSibling(name);
+        }
+        if (Files.isDirectory(input)) {
+            Files.createDirectories(target);
+            return target.resolve(name);
+        }
+        Path parent = target.toAbsolutePath().getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+        return target;
+    }
+
+    /** Token file for a parse-tree file: Name.xml -> NameT.xml, in the same folder. */
+    private static Path tokensFor(Path xml) {
+        return xml.resolveSibling(xml.getFileName().toString().replaceAll("\\.xml$", "") + "T.xml");
     }
 
     public static void main(String[] args) throws IOException {
@@ -28,8 +51,8 @@ public class Main {
             printHelp();
             return;
         }
-        if (args.length != 1) {
-            System.err.println("Usage: java -cp out jack.Main <File.jack | directory>");
+        if (args.length < 1 || args.length > 2) {
+            System.err.println("Usage: java -cp out jack.Main <File.jack | directory> [output.xml | output directory]");
             System.exit(1);
         }
         Path input = Path.of(args[0]);
@@ -41,10 +64,11 @@ public class Main {
         } else {
             files = List.of(input);
         }
+        Path target = args.length == 2 ? Path.of(args[1]) : null;
         boolean failed = false;
         for (Path f : files) {
-            Path out = Path.of(f.toString().replaceAll("\\.jack$", ".xml"));
-            Path tokensOut = Path.of(f.toString().replaceAll("\\.jack$", "T.xml"));
+            Path out = outputFor(f, input, target);
+            Path tokensOut = tokensFor(out);
             try {
                 List<Token> tokens = Tokenizer.fromFile(f).tokenize();
                 List<String> lines = new java.util.ArrayList<>();
