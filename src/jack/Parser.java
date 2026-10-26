@@ -155,22 +155,15 @@ public class Parser {
                 advance();
             }
             case IDENTIFIER -> {
-                advance();
-                if (isSymbol("[")) {
+                advance(); // identificador comum a todas as alternativas
+                if (isSymbol("(") || isSymbol(".")) {
+                    parseSubroutineCall();
+                } else if (isSymbol("[")) {
                     advance();
                     parseExpression();
                     eatSymbol("]");
-                } else if (isSymbol("(")) {
-                    advance();
-                    parseExpressionList();
-                    eatSymbol(")");
-                } else if (isSymbol(".")) {
-                    advance();
-                    eatIdentifier();
-                    eatSymbol("(");
-                    parseExpressionList();
-                    eatSymbol(")");
                 }
+                // nenhum dos dois: varName simples
             }
             case SYMBOL -> {
                 if (isSymbol("(")) {
@@ -266,18 +259,30 @@ public class Parser {
         close("whileStatement");
     }
 
+    /**
+     * subroutineName '(' expressionList ')' | (className | varName) '.' subroutineName '(' expressionList ')'
+     * Auxiliary rule without its own XML tag. Precondition: the leading identifier was already consumed.
+     */
+    public void parseSubroutineCall() {
+        if (isSymbol("(")) {
+            advance();
+            parseExpressionList();
+            eatSymbol(")");
+        } else {
+            eatSymbol(".");
+            eatIdentifier();
+            eatSymbol("(");
+            parseExpressionList();
+            eatSymbol(")");
+        }
+    }
+
     /** do subroutineCall ';' */
     public void parseDo() {
         open("doStatement");
         eatKeyword("do");
         eatIdentifier();
-        if (isSymbol(".")) {
-            advance();
-            eatIdentifier();
-        }
-        eatSymbol("(");
-        parseExpressionList();
-        eatSymbol(")");
+        parseSubroutineCall();
         eatSymbol(";");
         close("doStatement");
     }
