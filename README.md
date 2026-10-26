@@ -6,7 +6,8 @@ integrados em um único programa. Lê arquivos `.jack` e gera arquivos XML com a
 ## Grupo
 | Nome | Matrícula |
 |------|-----------|
-| _PREENCHER_ | _PREENCHER_ |
+| MATHEUS HENRIQUE ALBUQUERQUE TORRES | _PREENCHER_ |
+| JOSE AUGUSTO SANTOS LOPES | _PREENCHER_ |
 
 ## Linguagem utilizada
 **Java** (JDK 17 ou superior; testado com JDK 23). Sem dependências externas.
