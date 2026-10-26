@@ -372,7 +372,8 @@ public class CompilationEngine {
 
     private IllegalStateException error(String expected) {
         Token t = peek();
-        return new IllegalStateException("Syntax error: expected " + expected + " but found "
-                + (t == null ? "end of input" : "'" + t.value() + "'") + " (token #" + pos + ")");
+        int line = t != null ? t.line() : (tokens.isEmpty() ? 0 : tokens.get(tokens.size() - 1).line());
+        return new IllegalStateException("Syntax error at line " + line + ": expected " + expected + " but found "
+                + (t == null ? "end of input" : "'" + t.value() + "'"));
     }
 }
