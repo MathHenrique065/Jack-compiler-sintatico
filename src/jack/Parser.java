@@ -65,7 +65,7 @@ public class Parser {
     private Token advance() {
         Token t = peek();
         if (t == null) {
-            throw error("more tokens");
+            throw error("um token");
         }
         emit(t.toXml());
         pos++;
@@ -74,14 +74,14 @@ public class Parser {
 
     private void eatSymbol(String s) {
         if (!isSymbol(s)) {
-            throw error("'" + s + "'");
+            throw error(s);
         }
         advance();
     }
 
     private void eatKeyword(String... allowed) {
         if (!isKeyword(allowed)) {
-            throw error(String.join(" or ", allowed));
+            throw error(String.join("' ou '", allowed));
         }
         advance();
     }
@@ -89,7 +89,7 @@ public class Parser {
     private void eatIdentifier() {
         Token t = peek();
         if (t == null || t.type() != TokenType.IDENTIFIER) {
-            throw error("an identifier");
+            throw error("identificador");
         }
         advance();
     }
@@ -143,14 +143,14 @@ public class Parser {
     public void parseTerm() {
         Token t = peek();
         if (t == null) {
-            throw error("a term");
+            throw error("term");
         }
         open("term");
         switch (t.type()) {
             case INTEGER_CONSTANT, STRING_CONSTANT -> advance();
             case KEYWORD -> {
                 if (!isKeyword("true", "false", "null", "this")) {
-                    throw error("a keyword constant (true, false, null, this)");
+                    throw error("true' ou 'false' ou 'null' ou 'this");
                 }
                 advance();
             }
@@ -181,7 +181,7 @@ public class Parser {
                     advance();
                     parseTerm();
                 } else {
-                    throw error("a term");
+                    throw error("term");
                 }
             }
         }
@@ -385,10 +385,11 @@ public class Parser {
         close("class");
     }
 
+    /** Builds the error in the format required by the course: Linha N: Esperado 'X' encontrado 'Y'. */
     private IllegalStateException error(String expected) {
         Token t = peek();
         int line = t != null ? t.line() : (tokens.isEmpty() ? 0 : tokens.get(tokens.size() - 1).line());
-        return new IllegalStateException("Syntax error at line " + line + ": expected " + expected + " but found "
-                + (t == null ? "end of input" : "'" + t.value() + "'"));
+        String found = t == null ? "fim do arquivo" : t.value();
+        return new IllegalStateException("Linha " + line + ": Esperado '" + expected + "' encontrado '" + found + "'");
     }
 }
