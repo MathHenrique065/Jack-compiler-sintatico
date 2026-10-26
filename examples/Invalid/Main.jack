@@ -1,0 +1,7 @@
+class Broken {
+    function void main() {
+        var int x;
+        let x = ;
+        return;
+    }
+}
