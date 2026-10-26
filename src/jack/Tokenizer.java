@@ -18,6 +18,8 @@ public class Tokenizer {
 
     private final String src;
     private int pos = 0;
+    private int line = 1;
+    private int linePos = 0;
 
     public Tokenizer(String source) {
         this.src = source;
@@ -35,12 +37,22 @@ public class Tokenizer {
             if (pos >= src.length()) {
                 break;
             }
-            tokens.add(nextToken());
+            tokens.add(withLine(nextToken()));
         }
         return tokens;
     }
 
+    /** Stamps the token with the line where it starts (counted lazily from the last known position). */
+    private Token withLine(Token t) {
+        return new Token(t.type(), t.value(), line);
+    }
+
     private Token nextToken() {
+        for (; linePos < pos; linePos++) {
+            if (src.charAt(linePos) == '\n') {
+                line++;
+            }
+        }
         char c = src.charAt(pos);
         if (SYMBOLS.indexOf(c) >= 0) {
             pos++;
