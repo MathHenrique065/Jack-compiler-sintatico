@@ -25,6 +25,9 @@ public class Parser {
     /** Entry point: parses a whole class (the start symbol of the Jack grammar). */
     public void parse() {
         parseClass();
+        if (peek() != null) {
+            throw error("fim do arquivo");
+        }
     }
 
     /** The XML lines produced so far. */

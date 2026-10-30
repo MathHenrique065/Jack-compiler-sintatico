@@ -47,6 +47,21 @@ public class Tokenizer {
         return new Token(t.type(), t.value(), line);
     }
 
+    /** Line number (1-based) of an arbitrary position in the source. */
+    private int lineAt(int position) {
+        int n = 1;
+        for (int i = 0; i < position && i < src.length(); i++) {
+            if (src.charAt(i) == '\n') {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private IllegalStateException error(int position, String message) {
+        return new IllegalStateException("Linha " + lineAt(position) + ": " + message);
+    }
+
     private Token nextToken() {
         for (; linePos < pos; linePos++) {
             if (src.charAt(linePos) == '\n') {
@@ -61,9 +76,12 @@ public class Tokenizer {
         if (c == '"') {
             int end = src.indexOf('"', pos + 1);
             if (end < 0) {
-                throw new IllegalStateException("Unterminated string constant at position " + pos);
+                throw error(pos, "constante string sem aspas de fechamento");
             }
             String value = src.substring(pos + 1, end);
+            if (value.indexOf('\n') >= 0 || value.indexOf('\r') >= 0) {
+                throw error(pos, "constante string nao pode conter quebra de linha");
+            }
             pos = end + 1;
             return new Token(TokenType.STRING_CONSTANT, value);
         }
@@ -72,7 +90,11 @@ public class Tokenizer {
             while (pos < src.length() && Character.isDigit(src.charAt(pos))) {
                 pos++;
             }
-            return new Token(TokenType.INTEGER_CONSTANT, src.substring(start, pos));
+            String digits = src.substring(start, pos);
+            if (digits.length() > 5 || Integer.parseInt(digits) > 32767) {
+                throw error(start, "constante inteira fora do intervalo 0..32767: " + digits);
+            }
+            return new Token(TokenType.INTEGER_CONSTANT, digits);
         }
         if (Character.isLetter(c) || c == '_') {
             int start = pos;
@@ -83,7 +105,7 @@ public class Tokenizer {
             String word = src.substring(start, pos);
             return new Token(KEYWORDS.contains(word) ? TokenType.KEYWORD : TokenType.IDENTIFIER, word);
         }
-        throw new IllegalStateException("Unexpected character '" + c + "' at position " + pos);
+        throw error(pos, "caractere inesperado '" + c + "'");
     }
 
     private void skipWhitespaceAndComments() {
@@ -96,7 +118,10 @@ public class Tokenizer {
                 pos = end < 0 ? src.length() : end + 1;
             } else if (src.startsWith("/*", pos)) {
                 int end = src.indexOf("*/", pos + 2);
-                pos = end < 0 ? src.length() : end + 2;
+                if (end < 0) {
+                    throw error(pos, "comentario '/*' sem fechamento '*/'");
+                }
+                pos = end + 2;
             } else {
                 break;
             }

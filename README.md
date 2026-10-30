@@ -6,8 +6,7 @@ integrados em um único programa. Lê arquivos `.jack` e gera arquivos XML com a
 ## Grupo
 | Nome | Matrícula |
 |------|-----------|
-| MATHEUS HENRIQUE ALBUQUERQUE TORRES | _PREENCHER_ |
-| JOSE AUGUSTO SANTOS LOPES | _PREENCHER_ |
+| MATHEUS HENRIQUE ALBUQUERQUE TORRES | 2020002089 |
 
 ## Linguagem utilizada
 **Java** (JDK 17 ou superior; testado com JDK 23). Sem dependências externas.
@@ -56,6 +55,8 @@ Em caso de erro de sintaxe, o parser para no **primeiro erro** (sem recuperaçã
 `examples\Invalid\Main.jack: Linha 4: Esperado 'term' encontrado ';'`
 e o programa termina com código de saída 1.
 
+O scanner também rejeita, com `Linha N: ...`: comentário `/*` sem fechamento, string sem aspas de fechamento ou com quebra de linha, inteiro fora de 0..32767 e caractere inesperado. O parser rejeita tokens sobrando depois do `}` final da classe.
+
 A implementação segue o capítulo
 [5. Analisador sintático](https://lambdageo-edu.github.io/book-compiladores-com-nand2tetris/unidade-1-frontend/05-analisador-sintatico/):
 parser preditivo recursivo (top-down, LL(1) com fatoração à esquerda do identificador em `term`),
@@ -69,11 +70,13 @@ um método `parseX` por não-terminal, e as mesmas tags XML da especificação d
 | `src/jack/Token.java`, `TokenType.java` | Token (tipo, valor, linha) e categorias léxicas |
 | `src/jack/Parser.java` | Parser descendente recursivo: `parse()`, `parseClass`, `parseTerm`, ... e `XMLOutput()` |
 | `src/jack/Validate.java` | Compara o XML gerado com os arquivos oficiais (ignora indentação e linhas vazias) |
-| `examples/` | Programas `.jack` de teste e saídas geradas |
+| `test.ps1` | Teste de regressão: exemplos válidos batem com o XML de referência; exemplos inválidos são rejeitados |
+| `examples/` | Programas `.jack` de teste (`Seven`, `Average` com referência; `Invalid*` com erros) |
 
 ## Status da validação contra os arquivos oficiais
 - [x] Scanner e parser executam sem erro nos exemplos `Seven` e `Average`.
-- [x] Programa com erro (`examples/Invalid`) é rejeitado com mensagem e linha.
+- [x] Programas com erro (`examples/Invalid*`) são rejeitados com mensagem e linha.
+- [x] `./test.ps1` roda tudo isso automaticamente.
 - [ ] **Comparação com os XMLs oficiais – _PREENCHER após rodar a validação_**
   (ex.: ArrayTest, ExpressionLessSquare, Square: OK / diferenças encontradas).
 
