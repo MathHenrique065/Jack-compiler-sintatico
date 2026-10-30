@@ -40,28 +40,11 @@ public class Parser {
         return String.join("\n", out) + "\n";
     }
 
-    // ---- token cursor helpers ----
+    // ---- token cursor helpers: peek(), advance(), match(type), consume(type) ----
 
+    /** The current (lookahead) token, or null at the end of the input. Does not consume it. */
     private Token peek() {
         return pos < tokens.size() ? tokens.get(pos) : null;
-    }
-
-    private boolean isSymbol(String s) {
-        Token t = peek();
-        return t != null && t.type() == TokenType.SYMBOL && t.value().equals(s);
-    }
-
-    private boolean isKeyword(String... keywords) {
-        Token t = peek();
-        if (t == null || t.type() != TokenType.KEYWORD) {
-            return false;
-        }
-        for (String k : keywords) {
-            if (t.value().equals(k)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /** Writes the current token to the output and moves to the next one. */
@@ -75,34 +58,69 @@ public class Parser {
         return t;
     }
 
-    private void eatSymbol(String s) {
-        if (!isSymbol(s)) {
-            throw error(s);
+    /** True if the current token has the given type (does not consume it). */
+    private boolean match(TokenType type) {
+        Token t = peek();
+        return t != null && t.type() == type;
+    }
+
+    /** True if the current token has the given type and one of the given values (does not consume it). */
+    private boolean match(TokenType type, String... values) {
+        if (!match(type)) {
+            return false;
         }
-        advance();
+        for (String v : values) {
+            if (peek().value().equals(v)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Consumes the current token if it has the given type; otherwise reports a syntax error. */
+    private Token consume(TokenType type) {
+        if (!match(type)) {
+            throw error(type.xmlTag());
+        }
+        return advance();
+    }
+
+    /** Consumes the current token if it has the given type and one of the values; otherwise a syntax error. */
+    private Token consume(TokenType type, String... values) {
+        if (!match(type, values)) {
+            throw error(String.join("' ou '", values));
+        }
+        return advance();
+    }
+
+    private boolean isSymbol(String s) {
+        return match(TokenType.SYMBOL, s);
+    }
+
+    private boolean isKeyword(String... keywords) {
+        return match(TokenType.KEYWORD, keywords);
+    }
+
+    private void eatSymbol(String s) {
+        consume(TokenType.SYMBOL, s);
     }
 
     private void eatKeyword(String... allowed) {
-        if (!isKeyword(allowed)) {
-            throw error(String.join("' ou '", allowed));
-        }
-        advance();
+        consume(TokenType.KEYWORD, allowed);
     }
 
     private void eatIdentifier() {
-        Token t = peek();
-        if (t == null || t.type() != TokenType.IDENTIFIER) {
-            throw error("identificador");
-        }
-        advance();
+        consume(TokenType.IDENTIFIER);
     }
 
     /** type: int | char | boolean | className */
     private void eatType() {
         if (isKeyword("int", "char", "boolean")) {
             advance();
+        } else if (match(TokenType.IDENTIFIER)) {
+            advance();
         } else {
-            eatIdentifier();
+            throw error("int' ou 'char' ou 'boolean' ou 'identifier");
         }
     }
 
@@ -126,7 +144,13 @@ public class Parser {
 
     private static final String OPS = "+-*/&|<>=";
 
-    /** expression: term (op term)* */
+    /**
+     * expression: term (op term)*
+     * Jack has no operator precedence: all binary operators have the same priority and are
+     * applied left to right (left associativity); parentheses are the only way to change the
+     * order. That is exactly the flat structure of the official parse trees, so a single loop
+     * is enough - no expression/term/factor hierarchy is needed.
+     */
     public void parseExpression() {
         open("expression");
         parseTerm();
@@ -138,8 +162,7 @@ public class Parser {
     }
 
     private boolean isOp() {
-        Token t = peek();
-        return t != null && t.type() == TokenType.SYMBOL && OPS.contains(t.value());
+        return match(TokenType.SYMBOL) && OPS.contains(peek().value());
     }
 
     /** term: constant | varName | varName[expr] | subroutineCall | (expr) | unaryOp term */
@@ -151,12 +174,7 @@ public class Parser {
         open("term");
         switch (t.type()) {
             case INTEGER_CONSTANT, STRING_CONSTANT -> advance();
-            case KEYWORD -> {
-                if (!isKeyword("true", "false", "null", "this")) {
-                    throw error("true' ou 'false' ou 'null' ou 'this");
-                }
-                advance();
-            }
+            case KEYWORD -> consume(TokenType.KEYWORD, "true", "false", "null", "this");
             case IDENTIFIER -> {
                 advance(); // identificador comum a todas as alternativas
                 if (isSymbol("(") || isSymbol(".")) {
@@ -393,11 +411,12 @@ public class Parser {
         close("class");
     }
 
-    /** Builds the error in the format required by the course: Linha N: Esperado 'X' encontrado 'Y'. */
+    /** Builds the error in the course format: Linha N, coluna C: Esperado 'X' encontrado 'Y'. */
     private IllegalStateException error(String expected) {
         Token t = peek();
-        int line = t != null ? t.line() : (tokens.isEmpty() ? 0 : tokens.get(tokens.size() - 1).line());
+        Token at = t != null ? t : (tokens.isEmpty() ? null : tokens.get(tokens.size() - 1));
+        String where = at == null ? "Linha 0" : "Linha " + at.line() + ", coluna " + at.column();
         String found = t == null ? "fim do arquivo" : t.value();
-        return new IllegalStateException("Linha " + line + ": Esperado '" + expected + "' encontrado '" + found + "'");
+        return new IllegalStateException(where + ": Esperado '" + expected + "' encontrado '" + found + "'");
     }
 }

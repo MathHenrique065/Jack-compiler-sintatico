@@ -18,8 +18,11 @@ public class Tokenizer {
 
     private final String src;
     private int pos = 0;
+
+    // incremental position tracking: line number and start offset of the line containing 'scanned'
+    private int scanned = 0;
     private int line = 1;
-    private int linePos = 0;
+    private int lineStart = 0;
 
     public Tokenizer(String source) {
         this.src = source;
@@ -37,37 +40,31 @@ public class Tokenizer {
             if (pos >= src.length()) {
                 break;
             }
-            tokens.add(withLine(nextToken()));
+            int start = pos;
+            Token t = nextToken();
+            moveTo(start);
+            tokens.add(new Token(t.type(), t.value(), line, start - lineStart + 1));
         }
         return tokens;
     }
 
-    /** Stamps the token with the line where it starts (counted lazily from the last known position). */
-    private Token withLine(Token t) {
-        return new Token(t.type(), t.value(), line);
-    }
-
-    /** Line number (1-based) of an arbitrary position in the source. */
-    private int lineAt(int position) {
-        int n = 1;
-        for (int i = 0; i < position && i < src.length(); i++) {
-            if (src.charAt(i) == '\n') {
-                n++;
+    /** Advances the line counter up to {@code position} (positions only move forward). */
+    private void moveTo(int position) {
+        for (; scanned < position && scanned < src.length(); scanned++) {
+            if (src.charAt(scanned) == '\n') {
+                line++;
+                lineStart = scanned + 1;
             }
         }
-        return n;
     }
 
     private IllegalStateException error(int position, String message) {
-        return new IllegalStateException("Linha " + lineAt(position) + ": " + message);
+        moveTo(position);
+        return new IllegalStateException(
+                "Linha " + line + ", coluna " + (position - lineStart + 1) + ": " + message);
     }
 
     private Token nextToken() {
-        for (; linePos < pos; linePos++) {
-            if (src.charAt(linePos) == '\n') {
-                line++;
-            }
-        }
         char c = src.charAt(pos);
         if (SYMBOLS.indexOf(c) >= 0) {
             pos++;
